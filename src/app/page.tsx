@@ -1,45 +1,123 @@
 "use client";
 
-import React, { useState } from 'react';
-import Image from 'next/image';
+import React, { useState, useEffect, useCallback } from 'react';
 import BookmarkForm from '@/components/BookmarkForm';
 import BookmarkList from '@/components/BookmarkList';
 import { Bookmark } from '@/types';
+import { useAuth } from '@/context/AuthContext';
+import { createClient } from '@/utils/supabase-browser';
 
 export default function Home() {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
+  const supabase = createClient();
+
+  // Function to fetch bookmarks
+  const fetchBookmarks = useCallback(async () => {
+    setIsLoading(true);
+    
+    try {
+      // Fetch from collection table
+      const { data, error } = await supabase
+        .from('collection')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(30);
+      
+      if (error) {
+        console.error('Error fetching bookmarks:', error.message);
+        return;
+      }
+      
+      if (data) {
+        // Transform the data to match the Bookmark interface
+        const formattedBookmarks: Bookmark[] = data.map(item => ({
+          url: item.url,
+          title: item.title,
+          summary: item.summary || '',
+          topic: item.topic || 'Uncategorized',
+          source: item.source || 'Unknown',
+          createdAt: item.created_at,
+          user_id: item.UID,
+          user_display_name: item.profiles?.display_name
+        }));
+        
+        setBookmarks(formattedBookmarks);
+      } else {
+        setBookmarks([]);
+      }
+    } catch (err) {
+      console.error('Error in fetchBookmarks:', err);
+      setBookmarks([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [supabase]);
+
+  // Fetch all bookmarks when the component mounts
+  useEffect(() => {
+    fetchBookmarks();
+    
+    // Set up real-time subscription for collection changes
+    const subscription = supabase
+      .channel('collection_changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'collection' 
+        }, 
+        () => {
+          // Refresh bookmarks when changes occur
+          fetchBookmarks();
+        }
+      )
+      .subscribe();
+    
+    // Clean up subscription on unmount
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [fetchBookmarks]);
 
   const handleBookmarkCreated = (newBookmark: Bookmark) => {
-    setBookmarks((prevBookmarks) => [newBookmark, ...prevBookmarks]);
+    // Refresh the bookmarks list after creating a new bookmark
+    fetchBookmarks();
   };
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      <header className="bg-gray-800 shadow-md">
-        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4">
-            <Image 
-              src="/img/logo-0.png" 
-              alt="Collector Logo" 
-              width={200} 
-              height={200}
-              className="rounded-md w-8 h-8"
-            />
-            <div>
-              <h1 className="text-2xl font-normal text-white font-mono">Collector</h1>
-            </div>
-          </div>
-        </div>
-      </header>
-      
-      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+    <>
+      {user && (
         <BookmarkForm onBookmarkCreated={handleBookmarkCreated} />
-        
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold mb-4 text-white">Your Bookmarks</h2>
-          <BookmarkList bookmarks={bookmarks} />
+      )}
+      
+      <div className="mt-8">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-white">Recent Bookmarks</h2>
+          {isLoading && (
+            <div className="flex items-center">
+              <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+              <span className="text-sm text-gray-400">Refreshing...</span>
+            </div>
+          )}
         </div>
-      </main>
-    </div>
+        
+        {isLoading && bookmarks.length === 0 ? (
+          <div className="flex justify-center py-12">
+            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : bookmarks.length > 0 ? (
+          <BookmarkList 
+            bookmarks={bookmarks} 
+            showUserInfo={true} 
+          />
+        ) : (
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-8 text-center">
+            <p className="text-gray-400">No bookmarks found</p>
+          </div>
+        )}
+      </div>
+    </>
   );
 }

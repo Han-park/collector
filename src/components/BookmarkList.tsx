@@ -1,12 +1,17 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import { Bookmark } from '@/types';
 import BookmarkCard from './BookmarkCard';
 
 interface BookmarkListProps {
   bookmarks: Bookmark[];
+  showUserInfo?: boolean;
 }
 
-const BookmarkList: React.FC<BookmarkListProps> = ({ bookmarks }) => {
+const BookmarkList: React.FC<BookmarkListProps> = ({ bookmarks: initialBookmarks, showUserInfo = false }) => {
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>(initialBookmarks);
+
   if (bookmarks.length === 0) {
     return (
       <div className="text-center py-8">
@@ -17,10 +22,19 @@ const BookmarkList: React.FC<BookmarkListProps> = ({ bookmarks }) => {
     );
   }
 
+  const handleDelete = (index: number) => {
+    setBookmarks(prevBookmarks => prevBookmarks.filter((_, i) => i !== index));
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {bookmarks.map((bookmark, index) => (
-        <BookmarkCard key={`${bookmark.url}-${index}`} bookmark={bookmark} />
+        <BookmarkCard 
+          key={`${bookmark.url}-${index}`} 
+          bookmark={bookmark} 
+          showUserInfo={showUserInfo}
+          onDelete={() => handleDelete(index)}
+        />
       ))}
     </div>
   );

@@ -1,20 +1,14 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/context/AuthContext";
+import AuthNav from "@/components/auth/AuthNav";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Bookmark Collector",
-  description: "Save and organize your favorite links",
+  title: "Collector",
+  description: "Collect and organize your bookmarks",
 };
 
 export default function RootLayout({
@@ -24,10 +18,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-900 text-white`}
-      >
-        {children}
+      <body className={`${inter.className} bg-gray-900 text-white min-h-screen`}>
+        <AuthProvider>
+          <header className="bg-gray-900 border-b border-gray-700 sticky top-0 z-50">
+            <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
+              <AuthNav />
+            </div>
+          </header>
+          <main className="container mx-auto px-4 py-6">{children}</main>
+        </AuthProvider>
       </body>
     </html>
   );

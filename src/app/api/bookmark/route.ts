@@ -2,11 +2,19 @@ import { NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
 import axios from 'axios';
 import OpenAI from 'openai';
+import { createClient } from '@supabase/supabase-js';
+import { Bookmark } from '@/types';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 // Rate limiter implementation
 class RateLimiter {
@@ -86,11 +94,33 @@ function extractSourceFromUrl(url: string): string {
 
 export async function POST(request: Request) {
   try {
-    const { url } = await request.json();
+    const { url, token } = await request.json();
 
     if (!url) {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 });
     }
+
+    if (!token) {
+      return NextResponse.json({ error: 'Authentication token required' }, { status: 401 });
+    }
+
+    // Get the current user using the provided token
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
+    }
+
+    const userId = user.id;
+    
+    // Get user's display name from profiles table
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('id', userId)
+      .single();
+
+    const userDisplayName = profileData?.display_name || null;
 
     // Fetch the HTML content of the URL
     const response = await axios.get(url);
@@ -148,14 +178,41 @@ export async function POST(request: Request) {
     // Extract source from URL
     const source = extractSourceFromUrl(url);
     
-    // Create bookmark object
-    const bookmark = {
-      url,
+    // Create bookmark object for the collection table
+    const collectionItem = {
       title: aiResponse.title || pageTitle,
       summary: aiResponse.summary || pageDescription,
       topic: aiResponse.topic || 'Uncategorized',
       source,
-      createdAt: new Date().toISOString(),
+      url,
+      UID: userId, // Using UID field as per your collection table schema
+    };
+
+    // Store the bookmark in Supabase collection table
+    const { data: savedBookmark, error } = await supabase
+      .from('collection')
+      .insert([collectionItem])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error saving to collection:', error);
+      return NextResponse.json(
+        { error: 'Failed to save bookmark to collection' },
+        { status: 500 }
+      );
+    }
+
+    // Format the response to match the Bookmark interface
+    const bookmark: Bookmark = {
+      url: savedBookmark.url,
+      title: savedBookmark.title,
+      summary: savedBookmark.summary,
+      topic: savedBookmark.topic,
+      source: savedBookmark.source,
+      createdAt: savedBookmark.created_at,
+      user_id: savedBookmark.UID,
+      user_display_name: userDisplayName,
     };
 
     return NextResponse.json(bookmark);

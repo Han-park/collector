@@ -5,4 +5,6 @@ export interface Bookmark {
   topic: string;
   source: string;
   createdAt: string;
+  user_id?: string;
+  user_display_name?: string;
 } 

@@ -1,5 +1,8 @@
+'use client';
+
 import React, { useState } from 'react';
 import { Bookmark } from '@/types';
+import { useAuth } from '@/context/AuthContext';
 
 interface BookmarkFormProps {
   onBookmarkCreated: (bookmark: Bookmark) => void;
@@ -10,12 +13,18 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({ onBookmarkCreated }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isRateLimited, setIsRateLimited] = useState(false);
+  const { session } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!url) {
       setError('Please enter a URL');
+      return;
+    }
+
+    if (!session) {
+      setError('You must be signed in to create bookmarks');
       return;
     }
 
@@ -29,7 +38,10 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({ onBookmarkCreated }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ 
+          url,
+          token: session.access_token 
+        }),
       });
 
       if (!response.ok) {
@@ -47,8 +59,8 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({ onBookmarkCreated }) => {
       const bookmark = await response.json();
       onBookmarkCreated(bookmark);
       setUrl('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+    } catch (err: any) {
+      setError(err.message || 'An unknown error occurred');
     } finally {
       setIsLoading(false);
     }
