@@ -65,6 +65,7 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
               {bookmark.title}
             </a>
           </h3>
+   
           
           {isOwner && (
             <button
@@ -86,6 +87,9 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
             </button>
           )}
         </div>
+        <span className="text-xs text-gray-400">
+            {new Date(bookmark.createdAt).toLocaleDateString()}
+          </span>
 
         <div className="flex flex-wrap gap-2">
           <span className="text-xs px-2 py-1 bg-gray-700 text-blue-300 rounded-full">{bookmark.topic}</span>
@@ -111,9 +115,6 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
           >
             {bookmark.url}
           </a>
-          <span className="text-xs text-gray-400">
-            {new Date(bookmark.createdAt).toLocaleDateString()}
-          </span>
         </div>
       </div>
     </div>
