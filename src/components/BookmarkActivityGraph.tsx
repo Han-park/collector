@@ -93,30 +93,35 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
       }
       
       // Count bookmarks per week
-      bookmarks.forEach(bookmark => {
-        const bookmarkDate = new Date(bookmark.createdAt);
-        
-        // Skip if bookmark is older than our start date
-        if (bookmarkDate < startDate) return;
-        
-        // Find which week this bookmark belongs to
-        for (let i = 0; i < weeks; i++) {
-          const weekStart = new Date(startDate);
-          weekStart.setDate(startDate.getDate() + (i * 7));
+      if (bookmarks && bookmarks.length > 0) {
+        bookmarks.forEach(bookmark => {
+          if (!bookmark.createdAt) return;
           
-          const weekEnd = new Date(weekStart);
-          weekEnd.setDate(weekStart.getDate() + 6);
+          const bookmarkDate = new Date(bookmark.createdAt);
+          if (isNaN(bookmarkDate.getTime())) return; // Skip invalid dates
           
-          if (bookmarkDate >= weekStart && bookmarkDate <= weekEnd) {
-            const startFormatted = formatDateAsMMDD(weekStart);
-            const endFormatted = formatDateAsMMDD(weekEnd);
-            const weekLabel = `${startFormatted}-${endFormatted}`;
+          // Skip if bookmark is older than our start date
+          if (bookmarkDate < startDate) return;
+          
+          // Find which week this bookmark belongs to
+          for (let i = 0; i < weeks; i++) {
+            const weekStart = new Date(startDate);
+            weekStart.setDate(startDate.getDate() + (i * 7));
             
-            weeklyBuckets[weekLabel]++;
-            break;
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            
+            if (bookmarkDate >= weekStart && bookmarkDate <= weekEnd) {
+              const startFormatted = formatDateAsMMDD(weekStart);
+              const endFormatted = formatDateAsMMDD(weekEnd);
+              const weekLabel = `${startFormatted}-${endFormatted}`;
+              
+              weeklyBuckets[weekLabel]++;
+              break;
+            }
           }
-        }
-      });
+        });
+      }
       
       // Convert to arrays for Chart.js
       const weeklyData = weekLabels.map(label => weeklyBuckets[label]);
@@ -127,21 +132,28 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
       };
     };
     
-    const { labels, data } = generateWeeklyData();
-    
-    setChartData({
-      labels,
-      datasets: [
-        {
-          label: 'Collections Added',
-          data,
-          borderColor: 'rgba(59, 130, 246, 1)', // Blue
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-          fill: true,
-          tension: 0.4 // Smooth curve
-        }
-      ]
-    });
+    // Only generate chart data if we have the component mounted
+    if (typeof window !== 'undefined') {
+      const { labels, data } = generateWeeklyData();
+      
+      // Ensure we have at least two data points for the line chart
+      // This prevents the "Cannot set properties of undefined (setting 'cp1x')" error
+      if (labels.length > 0) {
+        setChartData({
+          labels,
+          datasets: [
+            {
+              label: 'Bookmarks Added',
+              data,
+              borderColor: 'rgba(59, 130, 246, 1)', // Blue
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              fill: true,
+              tension: data.length > 1 ? 0.4 : 0 // Only use tension if we have multiple points
+            }
+          ]
+        });
+      }
+    }
   }, [bookmarks, weeks]);
 
   const options = {
@@ -206,8 +218,12 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-md">
       <div className="h-64">
-        {chartData.labels.length > 0 && (
+        {chartData.labels.length > 0 && chartData.datasets[0]?.data.length > 0 ? (
           <Line data={chartData} options={options} />
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-gray-400">No bookmark activity data available</p>
+          </div>
         )}
       </div>
     </div>

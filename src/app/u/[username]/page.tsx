@@ -119,7 +119,7 @@ export default async function UserPage({ params }: PageProps) {
         
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold">Collections</h2>
+            <h2 className="text-xl font-semibold">Collections</h2>
           </div>
           
           {bookmarksFormatted.length > 0 ? (
