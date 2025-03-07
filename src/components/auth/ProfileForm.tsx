@@ -8,6 +8,7 @@ import { createClient } from '@/utils/supabase-browser';
 export default function ProfileForm() {
   const { user, updatePassword, updateDisplayName } = useAuth();
   const [displayName, setDisplayName] = useState('');
+  const [bio, setBio] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -20,10 +21,25 @@ export default function ProfileForm() {
   const [isCountLoading, setIsCountLoading] = useState(true);
   const supabase = createClient();
 
-  // Load display name from user metadata when component mounts
+  // Load display name from user metadata and bio from profiles table when component mounts
   useEffect(() => {
     if (user?.user_metadata?.display_name) {
       setDisplayName(user.user_metadata.display_name);
+    }
+
+    // Fetch profile data from profiles table
+    async function fetchProfileData() {
+      if (user) {
+        const { data: profileData, error } = await supabase
+          .from('profiles')
+          .select('bio')
+          .eq('UID', user.id)
+          .single();
+        
+        if (!error && profileData) {
+          setBio(profileData.bio || '');
+        }
+      }
     }
 
     // Fetch bookmark count
@@ -42,6 +58,7 @@ export default function ProfileForm() {
       }
     }
 
+    fetchProfileData();
     fetchBookmarkCount();
   }, [user, supabase]);
 
@@ -101,12 +118,52 @@ export default function ProfileForm() {
     }
 
     try {
+      // First update the display name in auth metadata
       const { error: updateError } = await updateDisplayName(displayName);
       if (updateError) throw updateError;
       
-      setDisplayNameMessage('Display name updated successfully');
+      // Then update or insert the profile record
+      if (user) {
+        // Check if profile exists
+        const { data: existingProfile, error: fetchError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('UID', user.id)
+          .single();
+        
+        if (fetchError && fetchError.code !== 'PGRST116') {
+          // Error other than "not found"
+          throw fetchError;
+        }
+        
+        if (existingProfile) {
+          // Update existing profile
+          const { error: profileUpdateError } = await supabase
+            .from('profiles')
+            .update({
+              display_name: displayName,
+              bio: bio
+            })
+            .eq('UID', user.id);
+          
+          if (profileUpdateError) throw profileUpdateError;
+        } else {
+          // Insert new profile
+          const { error: profileInsertError } = await supabase
+            .from('profiles')
+            .insert({
+              UID: user.id,
+              display_name: displayName,
+              bio: bio
+            });
+          
+          if (profileInsertError) throw profileInsertError;
+        }
+      }
+      
+      setDisplayNameMessage('Profile updated successfully');
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred while updating display name';
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while updating profile';
       setDisplayNameError(errorMessage);
     } finally {
       setIsDisplayNameLoading(false);
@@ -163,7 +220,7 @@ export default function ProfileForm() {
         </div>
 
         <div className="mb-6">
-          <h3 className="text-lg font-medium text-gray-300 mb-2">Set Display Name</h3>
+          <h3 className="text-lg font-medium text-gray-300 mb-2">Update Profile</h3>
           <form onSubmit={handleDisplayNameSubmit} className="space-y-4">
             <div>
               <label htmlFor="displayName" className="block text-sm font-medium text-gray-300 mb-1">
@@ -183,12 +240,30 @@ export default function ProfileForm() {
               </p>
             </div>
             
+            <div>
+              <label htmlFor="bio" className="block text-sm font-medium text-gray-300 mb-1">
+                Bio
+              </label>
+              <textarea
+                id="bio"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Tell others about yourself"
+                rows={3}
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                disabled={isDisplayNameLoading}
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                A short description that will appear on your profile page
+              </p>
+            </div>
+            
             <button
               type="submit"
               className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
               disabled={isDisplayNameLoading}
             >
-              {isDisplayNameLoading ? 'Updating...' : 'Update Display Name'}
+              {isDisplayNameLoading ? 'Updating...' : 'Update Profile'}
             </button>
           </form>
           

@@ -10,134 +10,123 @@ export default async function UserPage({
 }: {
   params: { username: string }
 }) {
-  const username = params.username;
+  // Await the params object before accessing its properties
+  const resolvedParams = await params;
+  const username = resolvedParams.username;
   
   try {
     const supabase = await createClient();
 
-    // Fetch all bookmarks to find users
-    const { data: allBookmarks, error: bookmarksError } = await supabase
+    // Query the profiles table with the correct structure
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, UID, display_name, created_at, bio')
+      .eq('display_name', username)
+      .single();
+    
+    if (profileError && profileError.code !== 'PGRST116') { // PGRST116 is "not found" error
+      console.error('Error fetching profile:', profileError.message);
+      notFound();
+    }
+    
+    // If we found a profile, use that user's UID
+    // If not, we'll try to find bookmarks with a matching user display name
+    let userId = profileData?.UID;
+    let displayName = username;
+    let joinedDate = new Date();
+    let userBio = '';
+    
+    if (profileData) {
+      displayName = profileData.display_name;
+      if (profileData.created_at) {
+        joinedDate = new Date(profileData.created_at);
+      }
+      userBio = profileData.bio || '';
+    }
+    
+    // If we don't have a userId yet, we need to try a different approach
+    // We'll fetch all bookmarks and look for matching display names in the metadata
+    if (!userId) {
+      // Fetch all bookmarks to find users
+      const { data: allBookmarks, error: bookmarksError } = await supabase
+        .from('collection')
+        .select('UID, metadata')
+        .order('created_at', { ascending: false });
+        
+      if (bookmarksError) {
+        console.error('Error fetching bookmarks:', bookmarksError.message);
+        notFound();
+      }
+      
+      // Look for bookmarks with matching user display name in metadata
+      const matchingBookmark = allBookmarks?.find(bookmark => 
+        bookmark.metadata?.user_display_name === username
+      );
+      
+      if (matchingBookmark) {
+        userId = matchingBookmark.UID;
+      } else {
+        // No matching user found
+        notFound();
+      }
+    }
+    
+    // Now fetch the user's bookmarks
+    const { data: bookmarks, error: bookmarksError } = await supabase
       .from('collection')
-      .select('UID')
+      .select('*')
+      .eq('UID', userId)
       .order('created_at', { ascending: false });
       
     if (bookmarksError) {
       console.error('Error fetching bookmarks:', bookmarksError.message);
       notFound();
     }
-    
-    // Get unique user IDs
-    const userIds = [...new Set(allBookmarks?.map(item => item.UID) || [])];
-    
-    // Try to find a user with a matching display name
-    let matchedUserId = null;
-    
-    for (const userId of userIds) {
-      try {
-        // Try to get user data from Supabase Auth
-        const { data: userData } = await supabase.auth.admin.getUserById(userId);
-        
-        if (userData?.user) {
-          // Check if display name or email username matches
-          const userDisplayName = userData.user.user_metadata?.display_name || 
-                                 userData.user.email?.split('@')[0];
-          
-          if (userDisplayName === username) {
-            matchedUserId = userId;
-            break;
-          }
-        }
-      } catch (err) {
-        console.error(`Error fetching user data for ${userId}:`, err);
-      }
-    }
-    
-    // If no user found with matching display name, try to see if username is a user ID
-    if (!matchedUserId && userIds.some(id => id.startsWith(username))) {
-      matchedUserId = userIds.find(id => id.startsWith(username));
-    }
-    
-    // If still no match, show not found
-    if (!matchedUserId) {
-      notFound();
-    }
-
-    // Fetch user's bookmarks from collection table
-    const { data: collectionItems, error: collectionError } = await supabase
-      .from('collection')
-      .select('*')
-      .eq('UID', matchedUserId)
-      .order('created_at', { ascending: false });
-
-    if (collectionError) {
-      console.error('Error fetching bookmarks:', collectionError.message);
-      // Continue with empty bookmarks rather than failing
-    }
-
-    // Get user data for display
-    let displayName = username;
-    let joinedDate = new Date();
-    
-    try {
-      const { data: userData } = await supabase.auth.admin.getUserById(matchedUserId);
-      if (userData?.user) {
-        // Use display name from metadata, or email username
-        displayName = userData.user.user_metadata?.display_name || 
-                     userData.user.email?.split('@')[0] || 
-                     username;
-        
-        // Use created_at from user data if available
-        if (userData.user.created_at) {
-          joinedDate = new Date(userData.user.created_at);
-        }
-      }
-    } catch (err) {
-      console.error(`Error fetching user data for display:`, err);
-    }
 
     // Transform collection items to match the Bookmark interface
-    const bookmarks: Bookmark[] = (collectionItems || []).map(item => ({
+    const bookmarksFormatted: Bookmark[] = (bookmarks || []).map(item => ({
       url: item.url,
       title: item.title,
-      summary: item.summary || '',
+      summary: item.description || '',
       topic: item.topic || 'Uncategorized',
       source: item.source || 'Unknown',
       createdAt: item.created_at,
       user_id: item.UID,
       user_display_name: displayName
     }));
-
+    
     return (
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-8">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-bold">
-              {displayName.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">{displayName}</h1>
-              <p className="text-gray-400">Joined {joinedDate.toLocaleDateString()}</p>
-            </div>
-          </div>
-        </div>
-
+      <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-white">Bookmarks</h2>
+          <h1 className="text-3xl font-bold mb-2">{displayName}</h1>
+          {userBio && <p className="text-gray-300 mb-2">{userBio}</p>}
+          <p className="text-gray-400">
+            Joined {joinedDate.toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })}
+          </p>
+        </div>
+        
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold">Bookmarks</h2>
           </div>
           
-          {bookmarks.length > 0 ? (
-            <BookmarkList bookmarks={bookmarks} />
+          {bookmarksFormatted.length > 0 ? (
+            <BookmarkList bookmarks={bookmarksFormatted} />
           ) : (
             <div className="bg-gray-800 border border-gray-700 rounded-lg p-8 text-center">
-              <p className="text-gray-400">No bookmarks found</p>
+              <p className="text-gray-400">No bookmarks yet</p>
             </div>
           )}
         </div>
       </div>
     );
-  } catch (err) {
-    console.error('Error in user profile page:', err);
+    
+  } catch (error) {
+    console.error('Error in user profile page:', error);
     notFound();
   }
 } 

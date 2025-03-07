@@ -37,26 +37,25 @@ export default function Home() {
         // Get unique user IDs
         const userIds = [...new Set(data.map(item => item.UID))];
         
-        // Fetch user metadata for each user ID
+        // Fetch display names from profiles table
         for (const userId of userIds) {
           try {
-            // Try to get user data from Supabase Auth
-            const { data: userData } = await supabase.auth.admin.getUserById(userId);
+            // Get user profile from profiles table
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('display_name')
+              .eq('UID', userId)
+              .single();
             
-            if (userData?.user) {
-              // Use display name from metadata, or email username, or user ID
-              const displayName = 
-                userData.user.user_metadata?.display_name || 
-                userData.user.email?.split('@')[0] || 
-                userId.substring(0, 8);
-              
-              userDisplayNames.set(userId, displayName);
+            if (!profileError && profileData) {
+              // Use display name from profiles table
+              userDisplayNames.set(userId, profileData.display_name);
             } else {
-              // Fallback if user not found
+              // Fallback if profile not found
               userDisplayNames.set(userId, userId.substring(0, 8));
             }
           } catch (err) {
-            console.error(`Error fetching user data for ${userId}:`, err);
+            console.error(`Error fetching profile data for ${userId}:`, err);
             // Fallback if error
             userDisplayNames.set(userId, userId.substring(0, 8));
           }
