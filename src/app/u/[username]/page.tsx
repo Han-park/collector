@@ -9,9 +9,12 @@ interface UserProfilePageProps {
   params: {
     username: string;
   };
+  searchParams: Record<string, string | string[] | undefined>;
 }
 
-export default async function UserProfilePage({ params }: UserProfilePageProps) {
+export default async function UserProfilePage({ 
+  params 
+}: UserProfilePageProps) {
   const username = params.username;
   
   try {
