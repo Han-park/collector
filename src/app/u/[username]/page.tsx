@@ -5,25 +5,16 @@ import { Bookmark } from '@/types';
 
 export const revalidate = 60; // Revalidate this page every 60 seconds
 
-interface UserProfilePageProps {
-  params: {
-    username: string;
-  };
-  searchParams: Record<string, string | string[] | undefined>;
-}
-
-export default async function UserProfilePage({ 
-  params 
-}: UserProfilePageProps) {
+export default async function UserProfilePage({
+  params,
+}: {
+  params: { username: string };
+}) {
   const username = params.username;
   
   try {
     const supabase = await createClient();
 
-    // First, try to find all users to match the username with a user
-    // This is a workaround since we don't have direct access to list all users
-    // In a production app, you might want to use a more efficient approach
-    
     // Fetch all bookmarks to find users
     const { data: allBookmarks, error: bookmarksError } = await supabase
       .from('collection')
