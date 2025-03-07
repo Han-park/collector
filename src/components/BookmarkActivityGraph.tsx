@@ -5,21 +5,25 @@ import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
-  BarElement,
+  PointElement,
+  LineElement,
   Title,
   Tooltip,
   Legend,
+  Filler
 } from 'chart.js';
-import { Bar } from 'react-chartjs-2';
+import { Line } from 'react-chartjs-2';
 
-// Register Chart.js components - using Bar chart instead of Line chart
+// Register Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
-  BarElement,
+  PointElement,
+  LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
 interface BookmarkActivityGraphProps {
@@ -38,8 +42,12 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
     datasets: {
       label: string;
       data: number[];
-      backgroundColor: string;
       borderColor: string;
+      backgroundColor: string;
+      fill: boolean;
+      tension: number;
+      pointRadius: number;
+      pointHoverRadius: number;
       borderWidth: number;
     }[];
   }>({
@@ -138,15 +146,22 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
       
       // Only update chart data if we have valid labels and data
       if (labels && labels.length > 0) {
+        // Special handling for line charts with only one data point
+        const useTension = data.length > 1 ? 0.4 : 0;
+        
         setChartData({
           labels,
           datasets: [
             {
               label: 'Bookmarks Added',
               data,
-              backgroundColor: 'rgba(59, 130, 246, 0.5)',
-              borderColor: 'rgba(59, 130, 246, 1)',
-              borderWidth: 1
+              borderColor: 'rgba(59, 130, 246, 1)', // Blue
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              fill: true,
+              tension: useTension,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              borderWidth: 2
             }
           ]
         });
@@ -185,17 +200,23 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
               return 'Unknown Week';
             }
             
-            try {
-              const label = tooltipItems[0].label;
-              const [start, end] = label.split('-');
-              // Convert MMDD to MM/DD format for better readability in tooltip
-              const startFormatted = `${start.substring(0, 2)}/${start.substring(2, 4)}`;
-              const endFormatted = `${end.substring(0, 2)}/${end.substring(2, 4)}`;
-              return `Week: ${startFormatted} - ${endFormatted}`;
-            } catch (_) {
-              // Ignore the error and return the raw label
-              return 'Week: ' + tooltipItems[0].label;
+            const label = tooltipItems[0].label;
+            
+            // Simple fallback approach without try/catch
+            const parts = label.split('-');
+            if (parts.length !== 2) {
+              return 'Week: ' + label;
             }
+            
+            const [start, end] = parts;
+            
+            // Safely extract substrings with fallbacks
+            const startMonth = start.length >= 2 ? start.substring(0, 2) : '??';
+            const startDay = start.length >= 4 ? start.substring(2, 4) : '??';
+            const endMonth = end.length >= 2 ? end.substring(0, 2) : '??';
+            const endDay = end.length >= 4 ? end.substring(2, 4) : '??';
+            
+            return `Week: ${startMonth}/${startDay} - ${endMonth}/${endDay}`;
           }
         }
       }
@@ -228,7 +249,7 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
     <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-md">
       <div className="h-64">
         {chartData.labels.length > 0 && chartData.datasets[0]?.data.length > 0 ? (
-          <Bar data={chartData} options={options} />
+          <Line data={chartData} options={options} />
         ) : (
           <div className="flex items-center justify-center h-full">
             <p className="text-gray-400">No bookmark activity data available</p>
