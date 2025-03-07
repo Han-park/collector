@@ -37,9 +37,9 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
   bookmarks,
   weeks = 12 // Default to showing 12 weeks
 }) => {
-  const [chartData, setChartData] = useState<{
-    labels: string[];
-    datasets: {
+  const [chartData, setChartData] = useState({
+    labels: [] as string[],
+    datasets: [] as {
       label: string;
       data: number[];
       borderColor: string;
@@ -49,10 +49,7 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
       pointRadius: number;
       pointHoverRadius: number;
       borderWidth: number;
-    }[];
-  }>({
-    labels: [],
-    datasets: []
+    }[]
   });
 
   // Helper function to format date as "MMDD" (e.g., "0111" for January 11)
@@ -146,19 +143,33 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
       
       // Only update chart data if we have valid labels and data
       if (labels && labels.length > 0) {
-        // Special handling for line charts with only one data point
-        const useTension = data.length > 1 ? 0.4 : 0;
+        // For line charts, we need special handling for sparse data
+        // If we have only one data point, we'll duplicate it to avoid bezier curve issues
+        let chartData = [...data];
+        let chartLabels = [...labels];
+        
+        // If we have only one data point, duplicate it to avoid bezier curve issues
+        if (data.length === 1) {
+          chartData = [data[0], data[0]];
+          chartLabels = [labels[0], labels[0]];
+        }
+        
+        // If we have no data points, create dummy data
+        if (data.length === 0) {
+          chartData = [0, 0];
+          chartLabels = ['No Data', 'No Data'];
+        }
         
         setChartData({
-          labels,
+          labels: chartLabels,
           datasets: [
             {
               label: 'Bookmarks Added',
-              data,
+              data: chartData,
               borderColor: 'rgba(59, 130, 246, 1)', // Blue
               backgroundColor: 'rgba(59, 130, 246, 0.1)',
               fill: true,
-              tension: useTension,
+              tension: 0.1, // Very low tension to avoid extreme curves
               pointRadius: 4,
               pointHoverRadius: 6,
               borderWidth: 2
