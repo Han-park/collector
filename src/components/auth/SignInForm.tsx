@@ -22,15 +22,16 @@ export default function SignInForm() {
 
     try {
       if (authMethod === 'password') {
-        const { error } = await signIn(email, password);
-        if (error) throw error;
+        const { error: signInError } = await signIn(email, password);
+        if (signInError) throw signInError;
       } else {
-        const { error } = await signInWithMagicLink(email);
-        if (error) throw error;
+        const { error: magicLinkError } = await signInWithMagicLink(email);
+        if (magicLinkError) throw magicLinkError;
         setMessage('Check your email for the magic link');
       }
-    } catch (error: any) {
-      setError(error.message || 'An error occurred during sign in');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred during sign in';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -131,7 +132,7 @@ export default function SignInForm() {
         
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-400">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link href="/auth/signup" className="text-blue-400 hover:text-blue-300">
               Sign up
             </Link>

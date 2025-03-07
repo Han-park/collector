@@ -31,17 +31,50 @@ export default function Home() {
       }
       
       if (data) {
+        // Create a map to store user display names
+        const userDisplayNames = new Map();
+        
+        // Get unique user IDs
+        const userIds = [...new Set(data.map(item => item.UID))];
+        
+        // Fetch user metadata for each user ID
+        for (const userId of userIds) {
+          try {
+            // Try to get user data from Supabase Auth
+            const { data: userData } = await supabase.auth.admin.getUserById(userId);
+            
+            if (userData?.user) {
+              // Use display name from metadata, or email username, or user ID
+              const displayName = 
+                userData.user.user_metadata?.display_name || 
+                userData.user.email?.split('@')[0] || 
+                userId.substring(0, 8);
+              
+              userDisplayNames.set(userId, displayName);
+            } else {
+              // Fallback if user not found
+              userDisplayNames.set(userId, userId.substring(0, 8));
+            }
+          } catch (err) {
+            console.error(`Error fetching user data for ${userId}:`, err);
+            // Fallback if error
+            userDisplayNames.set(userId, userId.substring(0, 8));
+          }
+        }
+        
         // Transform the data to match the Bookmark interface
-        const formattedBookmarks: Bookmark[] = data.map(item => ({
-          url: item.url,
-          title: item.title,
-          summary: item.summary || '',
-          topic: item.topic || 'Uncategorized',
-          source: item.source || 'Unknown',
-          createdAt: item.created_at,
-          user_id: item.UID,
-          user_display_name: item.profiles?.display_name
-        }));
+        const formattedBookmarks: Bookmark[] = data.map(item => {
+          return {
+            url: item.url,
+            title: item.title,
+            summary: item.summary || '',
+            topic: item.topic || 'Uncategorized',
+            source: item.source || 'Unknown',
+            createdAt: item.created_at,
+            user_id: item.UID,
+            user_display_name: userDisplayNames.get(item.UID) || item.UID.substring(0, 8)
+          };
+        });
         
         setBookmarks(formattedBookmarks);
       } else {
@@ -79,9 +112,9 @@ export default function Home() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [fetchBookmarks]);
+  }, [fetchBookmarks, supabase]);
 
-  const handleBookmarkCreated = (newBookmark: Bookmark) => {
+  const handleBookmarkCreated = () => {
     // Refresh the bookmarks list after creating a new bookmark
     fetchBookmarks();
   };

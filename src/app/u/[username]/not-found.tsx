@@ -6,7 +6,7 @@ export default function UserNotFound() {
       <div className="bg-gray-800 border border-gray-700 rounded-lg p-8">
         <h2 className="text-2xl font-bold text-white mb-4">User Not Found</h2>
         <p className="text-gray-400 mb-6">
-          The user profile you're looking for doesn't exist or may have been removed.
+          The user profile you&apos;re looking for doesn&apos;t exist or may have been removed.
         </p>
         <Link 
           href="/" 

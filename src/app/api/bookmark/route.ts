@@ -113,14 +113,8 @@ export async function POST(request: Request) {
 
     const userId = user.id;
     
-    // Get user's display name from profiles table
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('display_name')
-      .eq('id', userId)
-      .single();
-
-    const userDisplayName = profileData?.display_name || null;
+    // Get the display name from user metadata
+    const displayName = user.user_metadata?.display_name || user.email?.split('@')[0] || userId.substring(0, 8);
 
     // Fetch the HTML content of the URL
     const response = await axios.get(url);
@@ -185,7 +179,7 @@ export async function POST(request: Request) {
       topic: aiResponse.topic || 'Uncategorized',
       source,
       url,
-      UID: userId, // Using UID field as per your collection table schema
+      UID: userId // Using UID field as per your collection table schema
     };
 
     // Store the bookmark in Supabase collection table
@@ -212,7 +206,7 @@ export async function POST(request: Request) {
       source: savedBookmark.source,
       createdAt: savedBookmark.created_at,
       user_id: savedBookmark.UID,
-      user_display_name: userDisplayName,
+      user_display_name: displayName,
     };
 
     return NextResponse.json(bookmark);

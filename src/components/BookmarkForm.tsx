@@ -13,7 +13,7 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({ onBookmarkCreated }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isRateLimited, setIsRateLimited] = useState(false);
-  const { session } = useAuth();
+  const { user, session } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +23,7 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({ onBookmarkCreated }) => {
       return;
     }
 
-    if (!session) {
+    if (!session || !user) {
       setError('You must be signed in to create bookmarks');
       return;
     }
@@ -40,7 +40,7 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({ onBookmarkCreated }) => {
         },
         body: JSON.stringify({ 
           url,
-          token: session.access_token 
+          token: session.access_token
         }),
       });
 
@@ -59,8 +59,9 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({ onBookmarkCreated }) => {
       const bookmark = await response.json();
       onBookmarkCreated(bookmark);
       setUrl('');
-    } catch (err: any) {
-      setError(err.message || 'An unknown error occurred');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

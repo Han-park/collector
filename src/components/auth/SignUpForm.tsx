@@ -35,12 +35,13 @@ export default function SignUpForm() {
     }
 
     try {
-      const { error } = await signUp(email, password);
-      if (error) throw error;
+      const { error: signUpError } = await signUp(email, password);
+      if (signUpError) throw signUpError;
       
       setMessage('Check your email to confirm your account');
-    } catch (error: any) {
-      setError(error.message || 'An error occurred during sign up');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred during sign up';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

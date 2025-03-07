@@ -43,7 +43,7 @@ export default function ProfileForm() {
     }
 
     fetchBookmarkCount();
-  }, [user]);
+  }, [user, supabase]);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,14 +66,15 @@ export default function ProfileForm() {
     }
 
     try {
-      const { error } = await updatePassword(password);
-      if (error) throw error;
+      const { error: updateError } = await updatePassword(password);
+      if (updateError) throw updateError;
       
       setMessage('Password updated successfully');
       setPassword('');
       setConfirmPassword('');
-    } catch (error: any) {
-      setError(error.message || 'An error occurred while updating password');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while updating password';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -100,12 +101,13 @@ export default function ProfileForm() {
     }
 
     try {
-      const { error } = await updateDisplayName(displayName);
-      if (error) throw error;
+      const { error: updateError } = await updateDisplayName(displayName);
+      if (updateError) throw updateError;
       
       setDisplayNameMessage('Display name updated successfully');
-    } catch (error: any) {
-      setDisplayNameError(error.message || 'An error occurred while updating display name');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while updating display name';
+      setDisplayNameError(errorMessage);
     } finally {
       setIsDisplayNameLoading(false);
     }

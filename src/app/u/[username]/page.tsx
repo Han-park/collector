@@ -1,7 +1,6 @@
 import { createClient } from '@/utils/supabase-server';
 import { notFound } from 'next/navigation';
 import BookmarkList from '@/components/BookmarkList';
-import Link from 'next/link';
 import { Bookmark } from '@/types';
 
 export const revalidate = 60; // Revalidate this page every 60 seconds
@@ -18,15 +17,54 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
   try {
     const supabase = await createClient();
 
-    // Fetch user profile by display name
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('display_name', username)
-      .single();
-
-    if (profileError || !profile) {
-      console.error('Profile error:', profileError);
+    // First, try to find all users to match the username with a user
+    // This is a workaround since we don't have direct access to list all users
+    // In a production app, you might want to use a more efficient approach
+    
+    // Fetch all bookmarks to find users
+    const { data: allBookmarks, error: bookmarksError } = await supabase
+      .from('collection')
+      .select('UID')
+      .order('created_at', { ascending: false });
+      
+    if (bookmarksError) {
+      console.error('Error fetching bookmarks:', bookmarksError.message);
+      notFound();
+    }
+    
+    // Get unique user IDs
+    const userIds = [...new Set(allBookmarks?.map(item => item.UID) || [])];
+    
+    // Try to find a user with a matching display name
+    let matchedUserId = null;
+    
+    for (const userId of userIds) {
+      try {
+        // Try to get user data from Supabase Auth
+        const { data: userData } = await supabase.auth.admin.getUserById(userId);
+        
+        if (userData?.user) {
+          // Check if display name or email username matches
+          const userDisplayName = userData.user.user_metadata?.display_name || 
+                                 userData.user.email?.split('@')[0];
+          
+          if (userDisplayName === username) {
+            matchedUserId = userId;
+            break;
+          }
+        }
+      } catch (err) {
+        console.error(`Error fetching user data for ${userId}:`, err);
+      }
+    }
+    
+    // If no user found with matching display name, try to see if username is a user ID
+    if (!matchedUserId && userIds.some(id => id.startsWith(username))) {
+      matchedUserId = userIds.find(id => id.startsWith(username));
+    }
+    
+    // If still no match, show not found
+    if (!matchedUserId) {
       notFound();
     }
 
@@ -34,12 +72,33 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
     const { data: collectionItems, error: collectionError } = await supabase
       .from('collection')
       .select('*')
-      .eq('UID', profile.id)
+      .eq('UID', matchedUserId)
       .order('created_at', { ascending: false });
 
     if (collectionError) {
       console.error('Error fetching bookmarks:', collectionError.message);
       // Continue with empty bookmarks rather than failing
+    }
+
+    // Get user data for display
+    let displayName = username;
+    let joinedDate = new Date();
+    
+    try {
+      const { data: userData } = await supabase.auth.admin.getUserById(matchedUserId);
+      if (userData?.user) {
+        // Use display name from metadata, or email username
+        displayName = userData.user.user_metadata?.display_name || 
+                     userData.user.email?.split('@')[0] || 
+                     username;
+        
+        // Use created_at from user data if available
+        if (userData.user.created_at) {
+          joinedDate = new Date(userData.user.created_at);
+        }
+      }
+    } catch (err) {
+      console.error(`Error fetching user data for display:`, err);
     }
 
     // Transform collection items to match the Bookmark interface
@@ -51,7 +110,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
       source: item.source || 'Unknown',
       createdAt: item.created_at,
       user_id: item.UID,
-      user_display_name: username
+      user_display_name: displayName
     }));
 
     return (
@@ -59,11 +118,11 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
         <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-8">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-bold">
-              {username.charAt(0).toUpperCase()}
+              {displayName.charAt(0).toUpperCase()}
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">{username}</h1>
-              <p className="text-gray-400">Joined {new Date(profile.created_at).toLocaleDateString()}</p>
+              <h1 className="text-2xl font-bold text-white">{displayName}</h1>
+              <p className="text-gray-400">Joined {joinedDate.toLocaleDateString()}</p>
             </div>
           </div>
         </div>
