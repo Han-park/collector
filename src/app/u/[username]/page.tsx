@@ -5,11 +5,13 @@ import { Bookmark } from '@/types';
 
 export const revalidate = 60; // Revalidate this page every 60 seconds
 
-export default async function UserProfilePage({
-  params,
-}: {
-  params: { username: string };
-}) {
+type Props = {
+  params: {
+    username: string
+  }
+}
+
+export default async function UserPage({ params }: Props) {
   const username = params.username;
   
   try {
