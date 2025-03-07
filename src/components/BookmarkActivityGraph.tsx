@@ -168,7 +168,7 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
         bodyColor: 'rgba(255, 255, 255, 0.9)',
         displayColors: false,
         callbacks: {
-          title: (tooltipItems: any) => {
+          title: (tooltipItems: Array<{label: string}>) => {
             const label = tooltipItems[0].label;
             const [start, end] = label.split('-');
             // Convert MMDD to MM/DD format for better readability in tooltip
