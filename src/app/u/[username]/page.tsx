@@ -5,11 +5,12 @@ import { Bookmark } from '@/types';
 
 export const revalidate = 60; // Revalidate this page every 60 seconds
 
-export default async function UserPage({
-  params,
-}: {
-  params: { username: string }
-}) {
+// In Next.js 15, we need to use the correct type for params
+type PageProps = {
+  params: Promise<{ username: string }>
+}
+
+export default async function UserPage({ params }: PageProps) {
   // Await the params object before accessing its properties
   const resolvedParams = await params;
   const username = resolvedParams.username;
