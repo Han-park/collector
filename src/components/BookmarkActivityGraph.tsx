@@ -192,7 +192,8 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
               const startFormatted = `${start.substring(0, 2)}/${start.substring(2, 4)}`;
               const endFormatted = `${end.substring(0, 2)}/${end.substring(2, 4)}`;
               return `Week: ${startFormatted} - ${endFormatted}`;
-            } catch (err) {
+            } catch (_) {
+              // Ignore the error and return the raw label
               return 'Week: ' + tooltipItems[0].label;
             }
           }
