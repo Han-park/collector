@@ -30,6 +30,12 @@ const ClientBookmarkActivityGraph: React.FC<ClientBookmarkActivityGraphProps> = 
   weeks 
 }) => {
   const [hasError, setHasError] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Set client-side flag
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Reset error state when bookmarks change
   useEffect(() => {
@@ -37,9 +43,30 @@ const ClientBookmarkActivityGraph: React.FC<ClientBookmarkActivityGraphProps> = 
   }, [bookmarks]);
 
   // Validate bookmarks data
-  const validBookmarks = bookmarks?.filter(bookmark => 
-    bookmark && bookmark.createdAt && !isNaN(new Date(bookmark.createdAt).getTime())
-  ) || [];
+  const validBookmarks = React.useMemo(() => {
+    try {
+      if (!bookmarks || !Array.isArray(bookmarks)) return [];
+      
+      return bookmarks.filter(bookmark => 
+        bookmark && 
+        bookmark.createdAt && 
+        !isNaN(new Date(bookmark.createdAt).getTime())
+      );
+    } catch (err) {
+      console.error('Error validating bookmarks:', err);
+      return [];
+    }
+  }, [bookmarks]);
+
+  if (!isClient) {
+    return (
+      <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-md">
+        <div className="h-64 flex items-center justify-center">
+          <p className="text-gray-400">Loading activity graph...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (hasError) {
     return (

@@ -5,25 +5,21 @@ import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
-  PointElement,
-  LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
-  Filler
 } from 'chart.js';
-import { Line } from 'react-chartjs-2';
+import { Bar } from 'react-chartjs-2';
 
-// Register Chart.js components
+// Register Chart.js components - using Bar chart instead of Line chart
 ChartJS.register(
   CategoryScale,
   LinearScale,
-  PointElement,
-  LineElement,
+  BarElement,
   Title,
   Tooltip,
-  Legend,
-  Filler
+  Legend
 );
 
 interface BookmarkActivityGraphProps {
@@ -42,10 +38,9 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
     datasets: {
       label: string;
       data: number[];
-      borderColor: string;
       backgroundColor: string;
-      fill: boolean;
-      tension: number;
+      borderColor: string;
+      borderWidth: number;
     }[];
   }>({
     labels: [],
@@ -60,99 +55,104 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
   };
 
   useEffect(() => {
-    // Generate weekly data
-    const generateWeeklyData = () => {
-      // Get current date
-      const currentDate = new Date();
-      
-      // Calculate start date (X weeks ago)
-      const startDate = new Date();
-      startDate.setDate(currentDate.getDate() - (weeks * 7));
-      
-      // Initialize weekly buckets
-      const weeklyBuckets: { [key: string]: number } = {};
-      const weekLabels: string[] = [];
-      
-      // Create empty buckets for each week
-      for (let i = 0; i < weeks; i++) {
-        const weekStart = new Date(startDate);
-        weekStart.setDate(startDate.getDate() + (i * 7));
+    if (typeof window === 'undefined') return; // Skip on server-side
+
+    try {
+      // Generate weekly data
+      const generateWeeklyData = () => {
+        // Get current date
+        const currentDate = new Date();
         
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
+        // Calculate start date (X weeks ago)
+        const startDate = new Date();
+        startDate.setDate(currentDate.getDate() - (weeks * 7));
         
-        // Format as "MMDD" (e.g., "0111" for January 11)
-        const startFormatted = formatDateAsMMDD(weekStart);
-        const endFormatted = formatDateAsMMDD(weekEnd);
+        // Initialize weekly buckets
+        const weeklyBuckets: { [key: string]: number } = {};
+        const weekLabels: string[] = [];
         
-        const weekLabel = `${startFormatted}-${endFormatted}`;
-        weekLabels.push(weekLabel);
-        
-        // Initialize count to 0
-        weeklyBuckets[weekLabel] = 0;
-      }
-      
-      // Count bookmarks per week
-      if (bookmarks && bookmarks.length > 0) {
-        bookmarks.forEach(bookmark => {
-          if (!bookmark.createdAt) return;
+        // Create empty buckets for each week
+        for (let i = 0; i < weeks; i++) {
+          const weekStart = new Date(startDate);
+          weekStart.setDate(startDate.getDate() + (i * 7));
           
-          const bookmarkDate = new Date(bookmark.createdAt);
-          if (isNaN(bookmarkDate.getTime())) return; // Skip invalid dates
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 6);
           
-          // Skip if bookmark is older than our start date
-          if (bookmarkDate < startDate) return;
+          // Format as "MMDD" (e.g., "0111" for January 11)
+          const startFormatted = formatDateAsMMDD(weekStart);
+          const endFormatted = formatDateAsMMDD(weekEnd);
           
-          // Find which week this bookmark belongs to
-          for (let i = 0; i < weeks; i++) {
-            const weekStart = new Date(startDate);
-            weekStart.setDate(startDate.getDate() + (i * 7));
+          const weekLabel = `${startFormatted}-${endFormatted}`;
+          weekLabels.push(weekLabel);
+          
+          // Initialize count to 0
+          weeklyBuckets[weekLabel] = 0;
+        }
+        
+        // Count bookmarks per week
+        if (bookmarks && Array.isArray(bookmarks) && bookmarks.length > 0) {
+          bookmarks.forEach(bookmark => {
+            if (!bookmark || !bookmark.createdAt) return;
             
-            const weekEnd = new Date(weekStart);
-            weekEnd.setDate(weekStart.getDate() + 6);
-            
-            if (bookmarkDate >= weekStart && bookmarkDate <= weekEnd) {
-              const startFormatted = formatDateAsMMDD(weekStart);
-              const endFormatted = formatDateAsMMDD(weekEnd);
-              const weekLabel = `${startFormatted}-${endFormatted}`;
+            try {
+              const bookmarkDate = new Date(bookmark.createdAt);
+              if (isNaN(bookmarkDate.getTime())) return; // Skip invalid dates
               
-              weeklyBuckets[weekLabel]++;
-              break;
+              // Skip if bookmark is older than our start date
+              if (bookmarkDate < startDate) return;
+              
+              // Find which week this bookmark belongs to
+              for (let i = 0; i < weeks; i++) {
+                const weekStart = new Date(startDate);
+                weekStart.setDate(startDate.getDate() + (i * 7));
+                
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekStart.getDate() + 6);
+                
+                if (bookmarkDate >= weekStart && bookmarkDate <= weekEnd) {
+                  const startFormatted = formatDateAsMMDD(weekStart);
+                  const endFormatted = formatDateAsMMDD(weekEnd);
+                  const weekLabel = `${startFormatted}-${endFormatted}`;
+                  
+                  weeklyBuckets[weekLabel]++;
+                  break;
+                }
+              }
+            } catch (err) {
+              console.error('Error processing bookmark date:', err);
             }
-          }
-        });
-      }
-      
-      // Convert to arrays for Chart.js
-      const weeklyData = weekLabels.map(label => weeklyBuckets[label]);
-      
-      return {
-        labels: weekLabels,
-        data: weeklyData
+          });
+        }
+        
+        // Convert to arrays for Chart.js
+        const weeklyData = weekLabels.map(label => weeklyBuckets[label] || 0);
+        
+        return {
+          labels: weekLabels,
+          data: weeklyData
+        };
       };
-    };
-    
-    // Only generate chart data if we have the component mounted
-    if (typeof window !== 'undefined') {
+      
       const { labels, data } = generateWeeklyData();
       
-      // Ensure we have at least two data points for the line chart
-      // This prevents the "Cannot set properties of undefined (setting 'cp1x')" error
-      if (labels.length > 0) {
+      // Only update chart data if we have valid labels and data
+      if (labels && labels.length > 0) {
         setChartData({
           labels,
           datasets: [
             {
               label: 'Bookmarks Added',
               data,
-              borderColor: 'rgba(59, 130, 246, 1)', // Blue
-              backgroundColor: 'rgba(59, 130, 246, 0.1)',
-              fill: true,
-              tension: data.length > 1 ? 0.4 : 0 // Only use tension if we have multiple points
+              backgroundColor: 'rgba(59, 130, 246, 0.5)',
+              borderColor: 'rgba(59, 130, 246, 1)',
+              borderWidth: 1
             }
           ]
         });
       }
+    } catch (error) {
+      console.error('Error generating chart data:', error);
     }
   }, [bookmarks, weeks]);
 
@@ -168,7 +168,7 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
       },
       title: {
         display: true,
-        text: 'Weekly Collection Activity',
+        text: 'Weekly Bookmark Activity',
         color: 'rgba(255, 255, 255, 0.9)',
         font: {
           size: 16
@@ -181,12 +181,20 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
         displayColors: false,
         callbacks: {
           title: (tooltipItems: Array<{label: string}>) => {
-            const label = tooltipItems[0].label;
-            const [start, end] = label.split('-');
-            // Convert MMDD to MM/DD format for better readability in tooltip
-            const startFormatted = `${start.substring(0, 2)}/${start.substring(2, 4)}`;
-            const endFormatted = `${end.substring(0, 2)}/${end.substring(2, 4)}`;
-            return `Week: ${startFormatted} - ${endFormatted}`;
+            if (!tooltipItems || !tooltipItems[0] || !tooltipItems[0].label) {
+              return 'Unknown Week';
+            }
+            
+            try {
+              const label = tooltipItems[0].label;
+              const [start, end] = label.split('-');
+              // Convert MMDD to MM/DD format for better readability in tooltip
+              const startFormatted = `${start.substring(0, 2)}/${start.substring(2, 4)}`;
+              const endFormatted = `${end.substring(0, 2)}/${end.substring(2, 4)}`;
+              return `Week: ${startFormatted} - ${endFormatted}`;
+            } catch (err) {
+              return 'Week: ' + tooltipItems[0].label;
+            }
           }
         }
       }
@@ -219,7 +227,7 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
     <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-md">
       <div className="h-64">
         {chartData.labels.length > 0 && chartData.datasets[0]?.data.length > 0 ? (
-          <Line data={chartData} options={options} />
+          <Bar data={chartData} options={options} />
         ) : (
           <div className="flex items-center justify-center h-full">
             <p className="text-gray-400">No bookmark activity data available</p>
