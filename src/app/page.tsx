@@ -18,6 +18,8 @@ export default function Home() {
     setIsLoading(true);
     
     try {
+      console.log('Fetching bookmarks...');
+      
       // Fetch from collection table
       const { data, error } = await supabase
         .from('collection')
@@ -27,10 +29,13 @@ export default function Home() {
       
       if (error) {
         console.error('Error fetching bookmarks:', error.message);
+        setIsLoading(false);
         return;
       }
       
-      if (data) {
+      if (data && data.length > 0) {
+        console.log(`Found ${data.length} bookmarks`);
+        
         // Create a map to store user display names
         const userDisplayNames = new Map();
         
@@ -96,16 +101,40 @@ export default function Home() {
       .channel('collection_changes')
       .on('postgres_changes', 
         { 
-          event: '*', 
+          event: 'INSERT', 
           schema: 'public', 
           table: 'collection' 
         }, 
-        () => {
-          // Refresh bookmarks when changes occur
+        (payload) => {
+          console.log('New bookmark inserted:', payload);
           fetchBookmarks();
         }
       )
-      .subscribe();
+      .on('postgres_changes', 
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'collection' 
+        }, 
+        (payload) => {
+          console.log('Bookmark updated:', payload);
+          fetchBookmarks();
+        }
+      )
+      .on('postgres_changes', 
+        { 
+          event: 'DELETE', 
+          schema: 'public', 
+          table: 'collection' 
+        }, 
+        (payload) => {
+          console.log('Bookmark deleted:', payload);
+          fetchBookmarks();
+        }
+      )
+      .subscribe((status) => {
+        console.log('Supabase real-time subscription status:', status);
+      });
     
     // Clean up subscription on unmount
     return () => {
@@ -113,8 +142,11 @@ export default function Home() {
     };
   }, [fetchBookmarks, supabase]);
 
-  const handleBookmarkCreated = () => {
-    // Refresh the bookmarks list after creating a new bookmark
+  const handleBookmarkCreated = (newBookmark: Bookmark) => {
+    // Immediately add the new bookmark to the state
+    setBookmarks(prevBookmarks => [newBookmark, ...prevBookmarks]);
+    
+    // Then refresh all bookmarks to ensure everything is in sync
     fetchBookmarks();
   };
 

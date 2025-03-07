@@ -28,6 +28,10 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({ onBookmarkCreated }) => {
       return;
     }
 
+    // Debug session token
+    console.log('Session exists:', !!session);
+    console.log('Access token exists:', !!session.access_token);
+    
     try {
       setIsLoading(true);
       setError(null);
@@ -37,6 +41,7 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({ onBookmarkCreated }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({ 
           url,
@@ -57,8 +62,14 @@ const BookmarkForm: React.FC<BookmarkFormProps> = ({ onBookmarkCreated }) => {
       }
 
       const bookmark = await response.json();
-      onBookmarkCreated(bookmark);
+      console.log('New bookmark created:', bookmark);
+      
+      // Clear the input field first for better UX
       setUrl('');
+      
+      // Then notify parent component about the new bookmark
+      onBookmarkCreated(bookmark);
+      
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       setError(errorMessage);

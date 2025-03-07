@@ -25,8 +25,21 @@ export default function AuthNav() {
   }, []);
 
   const handleSignOut = async () => {
-    await signOut();
-    setIsMenuOpen(false);
+    try {
+      // Close the menu first
+      setIsMenuOpen(false);
+      
+      // Attempt to sign out
+      await signOut();
+      
+      // Force a page reload to ensure a clean state
+      window.location.href = '/';
+    } catch (err) {
+      console.error('Unexpected error during sign out:', err);
+      
+      // Even if there's an error, try to force a clean state
+      window.location.href = '/';
+    }
   };
 
   return (

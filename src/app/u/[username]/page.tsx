@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase-server';
 import { notFound } from 'next/navigation';
 import BookmarkList from '@/components/BookmarkList';
+import ClientBookmarkActivityGraph from '@/components/ClientBookmarkActivityGraph';
 import { Bookmark } from '@/types';
 
 export const revalidate = 60; // Revalidate this page every 60 seconds
@@ -88,7 +89,7 @@ export default async function UserPage({ params }: PageProps) {
     const bookmarksFormatted: Bookmark[] = (bookmarks || []).map(item => ({
       url: item.url,
       title: item.title,
-      summary: item.description || '',
+      summary: item.summary || '',
       topic: item.topic || 'Uncategorized',
       source: item.source || 'Unknown',
       createdAt: item.created_at,
@@ -110,16 +111,22 @@ export default async function UserPage({ params }: PageProps) {
           </p>
         </div>
         
+        {/* Activity Graph Section */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4">Consistency</h2>
+          <ClientBookmarkActivityGraph bookmarks={bookmarksFormatted} weeks={8} />
+        </div>
+        
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold">Bookmarks</h2>
+            <h2 className="text-2xl font-semibold">Collections</h2>
           </div>
           
           {bookmarksFormatted.length > 0 ? (
             <BookmarkList bookmarks={bookmarksFormatted} />
           ) : (
             <div className="bg-gray-800 border border-gray-700 rounded-lg p-8 text-center">
-              <p className="text-gray-400">No bookmarks yet</p>
+              <p className="text-gray-400">No collections yet</p>
             </div>
           )}
         </div>

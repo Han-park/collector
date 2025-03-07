@@ -87,21 +87,23 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
             </button>
           )}
         </div>
+        <div className="flex flex-row gap-2 items-center">
         <span className="text-xs text-gray-400">
             {new Date(bookmark.createdAt).toLocaleDateString()}
           </span>
-
-        <div className="flex flex-wrap gap-2">
-          <span className="text-xs px-2 py-1 bg-gray-700 text-blue-300 rounded-full">{bookmark.topic}</span>
-          <span className="text-xs px-2 py-1 bg-gray-700 text-green-300 rounded-full">{bookmark.source}</span>
           {showUserInfo && bookmark.user_display_name && (
             <Link 
               href={`/u/${bookmark.user_display_name}`}
-              className="text-xs px-2 py-1 bg-gray-700 text-purple-300 rounded-full hover:bg-gray-600"
+              className="text-xs text-white/50 hover:text-blue-300"
             >
               @{bookmark.user_display_name}
             </Link>
           )}
+          </div>
+
+        <div className="flex flex-wrap gap-2">
+          <span className="text-xs px-2 py-1 bg-gray-700 text-blue-300 rounded-full">{bookmark.topic}</span>
+          <span className="text-xs px-2 py-1 bg-gray-700 text-green-300 rounded-full">{bookmark.source}</span>
         </div>
         
         <p className="text-sm text-gray-300 line-clamp-3">{bookmark.summary}</p>

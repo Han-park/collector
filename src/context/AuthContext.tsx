@@ -65,7 +65,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    return supabase.auth.signOut();
+    try {
+      // First, manually clear the local state
+      setUser(null);
+      setSession(null);
+      
+      // Then attempt to sign out from Supabase
+      // Even if this fails, the user will be signed out locally
+      try {
+        await supabase.auth.signOut();
+      } catch (signOutError) {
+        // Ignore the "Auth session missing!" error
+        // The user is already signed out locally
+        console.log("Supabase sign out error (ignored):", signOutError);
+      }
+      
+      // Clear any auth-related cookies or local storage
+      // This is a belt-and-suspenders approach
+      if (typeof window !== 'undefined') {
+        // Clear any auth cookies
+        document.cookie.split(';').forEach(cookie => {
+          const [name] = cookie.trim().split('=');
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        });
+        
+        // Force a page reload to clear any in-memory state
+        // Uncomment if needed:
+        // window.location.href = '/';
+      }
+      
+      return { error: null };
+    } catch (err) {
+      console.error('Error during sign out:', err);
+      // Even on error, we've already cleared the local state
+      return { error: null }; // Return null to prevent further errors
+    }
   };
 
   const updatePassword = async (password: string) => {

@@ -54,7 +54,7 @@ class RateLimiter {
 }
 
 // Create a rate limiter instance: 5 calls per 60 seconds
-const openaiRateLimiter = new RateLimiter(5, 60);
+const openaiRateLimiter = new RateLimiter(20, 60);
 
 // Function to extract source from URL
 function extractSourceFromUrl(url: string): string {
@@ -95,20 +95,33 @@ function extractSourceFromUrl(url: string): string {
 export async function POST(request: Request) {
   try {
     const { url, token } = await request.json();
+    
+    // Also check for Authorization header
+    const authHeader = request.headers.get('Authorization');
+    const headerToken = authHeader ? authHeader.replace('Bearer ', '') : null;
+    
+    // Use either the token from the body or the Authorization header
+    const accessToken = token || headerToken;
 
     if (!url) {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 });
     }
 
-    if (!token) {
+    if (!accessToken) {
       return NextResponse.json({ error: 'Authentication token required' }, { status: 401 });
     }
 
     // Get the current user using the provided token
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
     
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
+    if (authError) {
+      console.error('Authentication error:', authError.message);
+      return NextResponse.json({ error: `Authentication failed: ${authError.message}` }, { status: 401 });
+    }
+    
+    if (!user) {
+      console.error('No user found with the provided token');
+      return NextResponse.json({ error: 'User not found' }, { status: 401 });
     }
 
     const userId = user.id;
@@ -123,10 +136,22 @@ export async function POST(request: Request) {
     // Parse the HTML with Cheerio
     const $ = cheerio.load(html);
     
-    // Extract metadata
-    const pageTitle = $('title').text() || $('meta[property="og:title"]').attr('content') || '';
+    // Extract metadata with more thorough title extraction
+    let pageTitle = $('title').text().trim();
+    
+    // If title is empty, try other common meta tags
+    if (!pageTitle) {
+      pageTitle = $('meta[property="og:title"]').attr('content') || 
+                 $('meta[name="twitter:title"]').attr('content') || 
+                 $('h1').first().text().trim() || '';
+    }
+    
+    // Clean up the title (remove site name suffixes like " - Example Site")
+    pageTitle = pageTitle.replace(/\s*[|\-–—]\s*[^|\-–—]*$/, '').trim();
+    
     const pageDescription = $('meta[name="description"]').attr('content') || 
-                           $('meta[property="og:description"]').attr('content') || '';
+                           $('meta[property="og:description"]').attr('content') || 
+                           $('meta[name="twitter:description"]').attr('content') || '';
     
     // Apply rate limiting before making the OpenAI API call
     const rateLimitResult = await openaiRateLimiter.throttle();
@@ -146,7 +171,7 @@ export async function POST(request: Request) {
       );
     }
     
-    // Use OpenAI to generate title, summary, and topic
+    // Only use OpenAI to generate summary and topic, and title only if needed
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -156,9 +181,9 @@ export async function POST(request: Request) {
         },
         {
           role: "user",
-          content: `Generate a concise title, summary (max 30 words), and a single topic category for this content. Format as JSON with keys: title, summary, topic.
+          content: `Generate a concise summary (max 30 words) and a single topic category for this content. ${!pageTitle ? "Also generate a title." : ""} Format as JSON with keys: ${!pageTitle ? "title, " : ""}summary, topic.
           
-          Content: ${pageTitle}
+          ${pageTitle ? `Title: ${pageTitle}` : ""}
           Description: ${pageDescription}
           URL: ${url}`
         }
@@ -174,7 +199,7 @@ export async function POST(request: Request) {
     
     // Create bookmark object for the collection table
     const collectionItem = {
-      title: aiResponse.title || pageTitle,
+      title: pageTitle || aiResponse.title || "Untitled Bookmark",
       summary: aiResponse.summary || pageDescription,
       topic: aiResponse.topic || 'Uncategorized',
       source,
