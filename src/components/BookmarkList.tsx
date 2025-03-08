@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bookmark } from '@/types';
 import BookmarkCard from './BookmarkCard';
 
@@ -11,12 +11,39 @@ interface BookmarkListProps {
 
 const BookmarkList: React.FC<BookmarkListProps> = ({ bookmarks: initialBookmarks, showUserInfo = false }) => {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(initialBookmarks);
+  const [isClient, setIsClient] = useState(false);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+
+  // Set client-side flag to ensure we only run client-side code
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Update bookmarks when initialBookmarks change
+  useEffect(() => {
+    setBookmarks(initialBookmarks);
+  }, [initialBookmarks]);
+
+  // Check if we should scroll to an anchor on load and set the highlighted bookmark
+  useEffect(() => {
+    if (isClient && window.location.hash) {
+      const id = window.location.hash.substring(1);
+      setHighlightedId(id);
+      
+      const element = document.getElementById(id);
+      if (element) {
+        // Add a slight delay to ensure the element is rendered
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
+    }
+  }, [isClient, bookmarks]);
 
   if (bookmarks.length === 0) {
     return (
       <div className="text-center py-8">
         <p className="text-gray-400">No bookmarks yet. Add your first one!</p>
-        <p className="text-gray-400 mt-2">This app is now a demo app. You can add bookmarks, but they will not be saved.</p>
         <p className="text-gray-400 mt-2">Contact me on me@han-park.info to any requests.</p>
       </div>
     );
@@ -27,15 +54,23 @@ const BookmarkList: React.FC<BookmarkListProps> = ({ bookmarks: initialBookmarks
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {bookmarks.map((bookmark, index) => (
-        <BookmarkCard 
-          key={`${bookmark.url}-${index}`} 
-          bookmark={bookmark} 
-          showUserInfo={showUserInfo}
-          onDelete={() => handleDelete(index)}
-        />
-      ))}
+    <div className="flex flex-col gap-4">
+      {bookmarks.map((bookmark, index) => {
+        // Create a unique ID for each bookmark based on its properties
+        // Use a combination of index and sanitized URL for uniqueness
+        const bookmarkId = `bookmark-${index}-${bookmark.url.replace(/[^a-zA-Z0-9]/g, '')}`.substring(0, 50);
+        
+        return (
+          <BookmarkCard 
+            key={`${bookmark.url}-${index}`} 
+            bookmark={bookmark} 
+            showUserInfo={showUserInfo}
+            onDelete={() => handleDelete(index)}
+            id={bookmarkId}
+            isHighlighted={highlightedId === bookmarkId}
+          />
+        );
+      })}
     </div>
   );
 };

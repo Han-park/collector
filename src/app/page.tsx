@@ -152,8 +152,16 @@ export default function Home() {
 
   return (
     <>
-      {user && (
+      {user ? (
         <BookmarkForm onBookmarkCreated={handleBookmarkCreated} />
+      ) : (
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-center mb-8">
+          <h2 className="text-xl font-semibold text-white mb-2">Welcome to Collector</h2>
+          <p className="text-gray-300 mb-4">Your personal bookmark collection tool</p>
+          <div className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors">
+            <a href="/auth/signin" className="block">Sign in or sign up to add your bookmarks</a>
+          </div>
+        </div>
       )}
       
       <div className="mt-8">

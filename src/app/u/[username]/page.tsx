@@ -3,12 +3,29 @@ import { notFound } from 'next/navigation';
 import BookmarkList from '@/components/BookmarkList';
 import ClientBookmarkActivityGraph from '@/components/ClientBookmarkActivityGraph';
 import { Bookmark } from '@/types';
+import { Metadata } from 'next';
 
 export const revalidate = 60; // Revalidate this page every 60 seconds
 
 // In Next.js 15, we need to use the correct type for params
 type PageProps = {
   params: Promise<{ username: string }>
+}
+
+// Generate metadata for the page
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const resolvedParams = await params;
+  const username = resolvedParams.username;
+  
+  return {
+    title: `${username}'s Bookmarks | Collector`,
+    description: `View and share ${username}'s bookmark collection`,
+    openGraph: {
+      title: `${username}'s Bookmarks | Collector`,
+      description: `View and share ${username}'s bookmark collection`,
+      type: 'profile',
+    }
+  };
 }
 
 export default async function UserPage({ params }: PageProps) {
@@ -113,20 +130,23 @@ export default async function UserPage({ params }: PageProps) {
         
         {/* Activity Graph Section */}
         <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Consistency</h2>
+          <h2 className="text-2xl font-semibold mb-4">Bookmark Activity</h2>
           <ClientBookmarkActivityGraph bookmarks={bookmarksFormatted} weeks={8} />
         </div>
         
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Collections</h2>
+            <h2 className="text-2xl font-semibold">Bookmarks</h2>
+            <p className="text-sm text-gray-400">
+              {bookmarksFormatted.length} {bookmarksFormatted.length === 1 ? 'bookmark' : 'bookmarks'}
+            </p>
           </div>
           
           {bookmarksFormatted.length > 0 ? (
             <BookmarkList bookmarks={bookmarksFormatted} />
           ) : (
             <div className="bg-gray-800 border border-gray-700 rounded-lg p-8 text-center">
-              <p className="text-gray-400">No collections yet</p>
+              <p className="text-gray-400">No bookmarks yet</p>
             </div>
           )}
         </div>
