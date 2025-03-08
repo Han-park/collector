@@ -5,25 +5,21 @@ import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
-  PointElement,
-  LineElement,
+  BarElement,
   Title,
   Tooltip,
-  Legend,
-  Filler
+  Legend
 } from 'chart.js';
-import { Line } from 'react-chartjs-2';
+import { Bar } from 'react-chartjs-2';
 
 // Register Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
-  PointElement,
-  LineElement,
+  BarElement,
   Title,
   Tooltip,
-  Legend,
-  Filler
+  Legend
 );
 
 interface BookmarkActivityGraphProps {
@@ -42,13 +38,11 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
     datasets: [] as {
       label: string;
       data: number[];
-      borderColor: string;
       backgroundColor: string;
-      fill: boolean;
-      tension: number;
-      pointRadius: number;
-      pointHoverRadius: number;
+      borderColor: string;
       borderWidth: number;
+      borderRadius: number;
+      maxBarThickness: number;
     }[]
   });
 
@@ -143,36 +137,17 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
       
       // Only update chart data if we have valid labels and data
       if (labels && labels.length > 0) {
-        // For line charts, we need special handling for sparse data
-        // If we have only one data point, we'll duplicate it to avoid bezier curve issues
-        let chartData = [...data];
-        let chartLabels = [...labels];
-        
-        // If we have only one data point, duplicate it to avoid bezier curve issues
-        if (data.length === 1) {
-          chartData = [data[0], data[0]];
-          chartLabels = [labels[0], labels[0]];
-        }
-        
-        // If we have no data points, create dummy data
-        if (data.length === 0) {
-          chartData = [0, 0];
-          chartLabels = ['No Data', 'No Data'];
-        }
-        
         setChartData({
-          labels: chartLabels,
+          labels,
           datasets: [
             {
               label: 'Bookmarks Added',
-              data: chartData,
-              borderColor: 'rgba(59, 130, 246, 1)', // Blue
-              backgroundColor: 'rgba(59, 130, 246, 0.1)',
-              fill: true,
-              tension: 0.1, // Very low tension to avoid extreme curves
-              pointRadius: 4,
-              pointHoverRadius: 6,
-              borderWidth: 2
+              data,
+              backgroundColor: 'rgba(59, 130, 246, 0.5)',
+              borderColor: 'rgba(59, 130, 246, 1)',
+              borderWidth: 1,
+              borderRadius: 4,
+              maxBarThickness: 20
             }
           ]
         });
@@ -260,7 +235,7 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
     <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-md">
       <div className="h-64">
         {chartData.labels.length > 0 && chartData.datasets[0]?.data.length > 0 ? (
-          <Line data={chartData} options={options} />
+          <Bar data={chartData} options={options} />
         ) : (
           <div className="flex items-center justify-center h-full">
             <p className="text-gray-400">No bookmark activity data available</p>
