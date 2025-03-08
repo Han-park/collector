@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { createClient } from '@/utils/supabase-browser';
 import { useAuth } from '@/context/AuthContext';
 import { usePathname } from 'next/navigation';
-import { Share2Icon, InfoCircledIcon, TrashIcon } from '@radix-ui/react-icons';
+import { Share2Icon, TrashIcon } from '@radix-ui/react-icons';
 
 interface BookmarkCardProps {
   bookmark: Bookmark;

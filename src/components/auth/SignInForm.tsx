@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase-browser';
+import { User } from '@supabase/supabase-js';
 
 export default function SignInForm() {
   const [email, setEmail] = useState('');
@@ -18,15 +19,8 @@ export default function SignInForm() {
   const router = useRouter();
   const supabase = createClient();
   
-  // Redirect if user is already signed in
-  useEffect(() => {
-    if (user) {
-      redirectToUserPage(user);
-    }
-  }, [user]);
-  
   // Function to redirect to user's page
-  const redirectToUserPage = async (user: any) => {
+  const redirectToUserPage = useCallback(async (user: User) => {
     // Try to get display name from user metadata
     const displayName = user.user_metadata?.display_name;
     
@@ -47,7 +41,14 @@ export default function SignInForm() {
         router.push('/');
       }
     }
-  };
+  }, [router, supabase]);
+  
+  // Redirect if user is already signed in
+  useEffect(() => {
+    if (user) {
+      redirectToUserPage(user);
+    }
+  }, [user, redirectToUserPage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
