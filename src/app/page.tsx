@@ -166,7 +166,7 @@ export default function Home() {
       
       <div className="mt-8">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-white">Recent Bookmarks</h2>
+          <h2 className="text-xl font-semibold text-white">Recent Collections</h2>
           {isLoading && (
             <div className="flex items-center">
               <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2"></div>

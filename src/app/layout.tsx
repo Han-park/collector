@@ -27,14 +27,14 @@ export default function RootLayout({
             </div>
           </header>
           <main className="container max-w-4xl mx-auto px-4 py-6 flex-grow">{children}</main>
-          <footer className="mt-auto py-8 border-t border-gray-800">
+          <footer className="mt-auto pt-8 pb-12">
             <div className="container max-w-4xl mx-auto px-4 flex justify-center">
               <Image 
                 src="/img/cfp-logo-grayscale.png" 
                 alt="CFP Logo" 
                 width={120} 
                 height={40} 
-                className="opacity-50 hover:opacity-80 transition-opacity"
+                className="opacity-30"
               />
             </div>
           </footer>

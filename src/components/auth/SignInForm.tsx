@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/utils/supabase-browser';
 
 export default function SignInForm() {
   const [email, setEmail] = useState('');
@@ -12,7 +14,40 @@ export default function SignInForm() {
   const [message, setMessage] = useState<string | null>(null);
   const [authMethod, setAuthMethod] = useState<'password' | 'magic'>('password');
   
-  const { signIn, signInWithMagicLink } = useAuth();
+  const { signIn, signInWithMagicLink, user } = useAuth();
+  const router = useRouter();
+  const supabase = createClient();
+  
+  // Redirect if user is already signed in
+  useEffect(() => {
+    if (user) {
+      redirectToUserPage(user);
+    }
+  }, [user]);
+  
+  // Function to redirect to user's page
+  const redirectToUserPage = async (user: any) => {
+    // Try to get display name from user metadata
+    const displayName = user.user_metadata?.display_name;
+    
+    if (displayName) {
+      router.push(`/u/${displayName}`);
+    } else {
+      // If no display name in metadata, try to fetch from profiles table
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', user.id)
+        .single();
+        
+      if (profileData?.display_name) {
+        router.push(`/u/${profileData.display_name}`);
+      } else {
+        // If still no display name, redirect to home
+        router.push('/');
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,8 +57,14 @@ export default function SignInForm() {
 
     try {
       if (authMethod === 'password') {
-        const { error: signInError } = await signIn(email, password);
+        // Use the signIn function from AuthContext which now returns { data, error }
+        const { error: signInError, data } = await signIn(email, password);
         if (signInError) throw signInError;
+        
+        // If successful sign-in, redirect to user's page
+        if (data?.user) {
+          await redirectToUserPage(data.user);
+        }
       } else {
         const { error: magicLinkError } = await signInWithMagicLink(email);
         if (magicLinkError) throw magicLinkError;

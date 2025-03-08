@@ -130,13 +130,13 @@ export default async function UserPage({ params }: PageProps) {
         
         {/* Activity Graph Section */}
         <div className="mb-8">
-          <h2 className="text-2xl font-semibold mb-4">Bookmark Activity</h2>
+          <h2 className="text-xl font-semibold mb-4">Consistency</h2>
           <ClientBookmarkActivityGraph bookmarks={bookmarksFormatted} weeks={8} />
         </div>
         
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold">Bookmarks</h2>
+            <h2 className="text-xl font-semibold">Collections</h2>
             <p className="text-sm text-gray-400">
               {bookmarksFormatted.length} {bookmarksFormatted.length === 1 ? 'bookmark' : 'bookmarks'}
             </p>
@@ -146,7 +146,7 @@ export default async function UserPage({ params }: PageProps) {
             <BookmarkList bookmarks={bookmarksFormatted} />
           ) : (
             <div className="bg-gray-800 border border-gray-700 rounded-lg p-8 text-center">
-              <p className="text-gray-400">No bookmarks yet</p>
+              <p className="text-gray-400">No Collections yet</p>
             </div>
           )}
         </div>
