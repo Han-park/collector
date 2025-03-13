@@ -177,7 +177,7 @@ export async function POST(request: Request) {
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant that generates concise bookmark information."
+          content: "You are a helpful assistant that generates concise bookmark information. For YouTube videos, focus on the specific video content, not general YouTube platform descriptions."
         },
         {
           role: "user",
@@ -185,7 +185,9 @@ export async function POST(request: Request) {
           
           ${pageTitle ? `Title: ${pageTitle}` : ""}
           Description: ${pageDescription}
-          URL: ${url}`
+          URL: ${url}
+          
+          Important: If this is a YouTube video, focus on summarizing the specific video content, not describing YouTube as a platform. Avoid generic descriptions like "Upload and share videos" or "Discover and share your favorite videos".`
         }
       ],
       response_format: { type: "json_object" }
