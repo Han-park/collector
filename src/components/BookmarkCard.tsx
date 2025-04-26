@@ -56,11 +56,20 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
     setIsDeleting(true);
     
     try {
-      const { error } = await supabase
+      const deleteQuery = supabase
         .from('collection')
-        .delete()
-        .eq('url', bookmark.url)
-        .eq('UID', user!.id);
+        .delete();
+      
+      // Use ID for deletion if available, otherwise fall back to URL + UID
+      if (bookmark.id) {
+        deleteQuery.eq('id', bookmark.id);
+      } else {
+        deleteQuery
+          .eq('url', bookmark.url)
+          .eq('UID', user!.id);
+      }
+      
+      const { error } = await deleteQuery;
       
       if (error) {
         console.error('Error deleting bookmark:', error);
@@ -197,6 +206,9 @@ const BookmarkCard: React.FC<BookmarkCardProps> = ({
           >
             {bookmark.url}
           </a>
+          {bookmark.id && (
+            <span className="text-xs text-gray-500">ID: {bookmark.id}</span>
+          )}
         </div>
       </div>
     </div>

@@ -57,12 +57,14 @@ const BookmarkList: React.FC<BookmarkListProps> = ({ bookmarks: initialBookmarks
     <div className="flex flex-col gap-4">
       {bookmarks.map((bookmark, index) => {
         // Create a unique ID for each bookmark based on its properties
-        // Use a combination of index and sanitized URL for uniqueness
-        const bookmarkId = `bookmark-${index}-${bookmark.url.replace(/[^a-zA-Z0-9]/g, '')}`.substring(0, 50);
+        // Use the database ID if available, otherwise create a unique one from URL
+        const bookmarkId = bookmark.id 
+          ? `bookmark-${bookmark.id}`
+          : `bookmark-${index}-${bookmark.url.replace(/[^a-zA-Z0-9]/g, '')}`.substring(0, 50);
         
         return (
           <BookmarkCard 
-            key={`${bookmark.url}-${index}`} 
+            key={bookmark.id ? `bookmark-${bookmark.id}` : `${bookmark.url}-${index}`} 
             bookmark={bookmark} 
             showUserInfo={showUserInfo}
             onDelete={() => handleDelete(index)}

@@ -104,6 +104,7 @@ export default async function UserPage({ params }: PageProps) {
 
     // Transform collection items to match the Bookmark interface
     const bookmarksFormatted: Bookmark[] = (bookmarks || []).map(item => ({
+      id: item.id,
       url: item.url,
       title: item.title,
       summary: item.summary || '',

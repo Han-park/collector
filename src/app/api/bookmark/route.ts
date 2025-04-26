@@ -226,6 +226,7 @@ export async function POST(request: Request) {
 
     // Format the response to match the Bookmark interface
     const bookmark: Bookmark = {
+      id: savedBookmark.id,
       url: savedBookmark.url,
       title: savedBookmark.title,
       summary: savedBookmark.summary,
