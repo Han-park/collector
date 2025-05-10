@@ -21,7 +21,7 @@ const BookmarkActivityGraph = dynamic(
 );
 
 interface ClientBookmarkActivityGraphProps {
-  bookmarks: Bookmark[];
+  bookmarks: (Bookmark & { wkcnt?: number })[];
   weeks?: number;
 }
 
@@ -50,7 +50,8 @@ const ClientBookmarkActivityGraph: React.FC<ClientBookmarkActivityGraphProps> = 
       return bookmarks.filter(bookmark => 
         bookmark && 
         bookmark.createdAt && 
-        !isNaN(new Date(bookmark.createdAt).getTime())
+        !isNaN(new Date(bookmark.createdAt).getTime()) &&
+        (typeof bookmark.wkcnt === 'number' && !isNaN(bookmark.wkcnt))
       );
     } catch (err) {
       console.error('Error validating bookmarks:', err);

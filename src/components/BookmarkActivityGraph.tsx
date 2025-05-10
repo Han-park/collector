@@ -25,6 +25,7 @@ ChartJS.register(
 interface BookmarkActivityGraphProps {
   bookmarks: {
     createdAt: string;
+    wkcnt?: number; // Add wkcnt to Bookmark type
   }[];
   weeks?: number; // Number of weeks to show (default: 12)
 }
@@ -54,6 +55,8 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
   };
 
   useEffect(() => {
+    const wkcntArray = bookmarks.map(b => b.wkcnt).filter(wk => wk !== undefined);
+    console.log('BookmarkActivityGraph received wkcnt values:', wkcntArray);
     if (typeof window === 'undefined') return; // Skip on server-side
 
     try {
@@ -89,23 +92,20 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
           weeklyBuckets[weekLabel] = 0;
         }
         
-        // Count bookmarks per week
+        // Find the max wkcnt for each week
         if (bookmarks && Array.isArray(bookmarks) && bookmarks.length > 0) {
           bookmarks.forEach(bookmark => {
-            if (!bookmark || !bookmark.createdAt) return;
+            if (!bookmark || !bookmark.createdAt || typeof bookmark.wkcnt !== 'number') return;
             
             try {
               const bookmarkDate = new Date(bookmark.createdAt);
               if (isNaN(bookmarkDate.getTime())) return; // Skip invalid dates
               
-              // Skip if bookmark is older than our start date
               if (bookmarkDate < startDate) return;
               
-              // Find which week this bookmark belongs to
               for (let i = 0; i < weeks; i++) {
                 const weekStart = new Date(startDate);
                 weekStart.setDate(startDate.getDate() + (i * 7));
-                
                 const weekEnd = new Date(weekStart);
                 weekEnd.setDate(weekStart.getDate() + 6);
                 
@@ -114,7 +114,8 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
                   const endFormatted = formatDateAsMMDD(weekEnd);
                   const weekLabel = `${startFormatted}-${endFormatted}`;
                   
-                  weeklyBuckets[weekLabel]++;
+                  // Store the maximum wkcnt for the week
+                  weeklyBuckets[weekLabel] = Math.max(weeklyBuckets[weekLabel] || 0, bookmark.wkcnt);
                   break;
                 }
               }
@@ -141,7 +142,7 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
           labels,
           datasets: [
             {
-              label: 'Bookmarks Added',
+              label: 'Number of bookmarks created', // Updated label
               data,
               backgroundColor: 'rgba(59, 130, 246, 0.5)',
               borderColor: 'rgba(59, 130, 246, 1)',
@@ -169,7 +170,7 @@ const BookmarkActivityGraph: React.FC<BookmarkActivityGraphProps> = ({
       },
       title: {
         display: true,
-        text: 'Weekly Bookmark Activity',
+        text: 'Bookmarks per week',
         color: 'rgba(255, 255, 255, 0.9)',
         font: {
           size: 16

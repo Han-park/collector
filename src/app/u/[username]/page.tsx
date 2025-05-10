@@ -112,7 +112,8 @@ export default async function UserPage({ params }: PageProps) {
       source: item.source || 'Unknown',
       createdAt: item.created_at,
       user_id: item.UID,
-      user_display_name: displayName
+      user_display_name: displayName,
+      wkcnt: item.wkcnt
     }));
     
     return (

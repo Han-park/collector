@@ -8,4 +8,5 @@ export interface Bookmark {
   createdAt: string;
   user_id?: string;
   user_display_name?: string;
+  wkcnt?: number;
 } 

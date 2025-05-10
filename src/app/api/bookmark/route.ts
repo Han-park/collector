@@ -92,6 +92,14 @@ function extractSourceFromUrl(url: string): string {
   }
 }
 
+// Helper to get start of week (Sunday)
+function getWeekStart(date: Date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - d.getDay());
+  return d;
+}
+
 export async function POST(request: Request) {
   try {
     const { url, token } = await request.json();
@@ -199,6 +207,28 @@ export async function POST(request: Request) {
     // Extract source from URL
     const source = extractSourceFromUrl(url);
     
+    // --- Calculate wkcnt for this user for the current week ---
+    const now = new Date();
+    const weekStart = getWeekStart(now);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+
+    // Get the latest wkcnt for this user for this week
+    const { data: userWeekBookmarks, error: userWeekError } = await supabase
+      .from('collection')
+      .select('wkcnt')
+      .eq('UID', userId)
+      .gte('created_at', weekStart.toISOString())
+      .lte('created_at', weekEnd.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    let wkcnt = 1;
+    if (userWeekBookmarks && userWeekBookmarks.length > 0 && userWeekBookmarks[0].wkcnt) {
+      wkcnt = Number(userWeekBookmarks[0].wkcnt) + 1;
+    }
+
     // Create bookmark object for the collection table
     const collectionItem = {
       title: pageTitle || aiResponse.title || "Untitled Bookmark",
@@ -206,7 +236,8 @@ export async function POST(request: Request) {
       topic: aiResponse.topic || 'Uncategorized',
       source,
       url,
-      UID: userId // Using UID field as per your collection table schema
+      UID: userId, // Using UID field as per your collection table schema
+      wkcnt // <--- Insert the calculated wkcnt
     };
 
     // Store the bookmark in Supabase collection table
